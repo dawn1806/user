@@ -12,32 +12,13 @@ import (
 	"github.com/micro/go-micro/v2"
 	"github.com/micro/go-micro/v2/logger"
 	"github.com/micro/go-micro/v2/registry"
-	"github.com/micro/go-plugins/registry/consul/v2"
-	"strconv"
+	"github.com/micro/go-micro/v2/registry/etcd"
 )
 
 func main() {
 
-	// 配置中心
-	conf, err := common.GetConsulConfig("127.0.0.1", 8500, "/micro/config")
-	if err != nil {
-		fmt.Println("[main] config err=", err)
-	}
-
-	// 注册中心
-	consulRegistry := consul.NewRegistry(func(options *registry.Options) {
-		options.Addrs = []string{
-			"127.0.0.1:8500",
-		}
-	})
-
 	// 创建数据库连接
-	mysqlInfo := common.GetMysqlFromConsul(conf, "mysql")
-	db, err := gorm.Open("mysql",
-		mysqlInfo.User + ":" +
-		mysqlInfo.Password + "@(" +
-		mysqlInfo.Host + ":" + strconv.Itoa(int(mysqlInfo.Port)) + ")/" +
-		mysqlInfo.Database + "?charset=utf8&parseTime=True&loc=Local")
+	db, err := gorm.Open("mysql", common.MysqlConnection)
 	if err != nil {
 		fmt.Println("gorm.DB err=", err)
 		return
@@ -56,7 +37,8 @@ func main() {
 		micro.Name("micro-user"),
 		micro.Version("latest"),
 		micro.Address("127.0.0.1:8001"),
-		micro.Registry(consulRegistry),
+		micro.Registry(etcd.NewRegistry(
+			registry.Addrs("127.0.0.1:2379"))),
 	)
 
 	// 初始化服务
